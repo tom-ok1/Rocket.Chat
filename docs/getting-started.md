@@ -101,6 +101,77 @@ Meteor picks up the new `dist` on its next reload. For a one-shot rebuild, run
 Recommended loop: `yarn dev` in `apps/meteor` in one terminal, and `yarn dev`
 only in the package(s) you are editing.
 
+### Vite client (`yarn dev:next`)
+
+`yarn dev:next` serves the client from Vite instead of Meteor. It has two
+modes: against a **remote server**, or against a **local Meteor server**.
+
+> The Vite client is a work in progress. Every `meteor/*` import resolves to an
+> inert shim, so a feature that still calls a Meteor client API does not work.
+> The browser console shows `[vite] <name> is not available outside the Meteor
+> build` once for each such API. Use `yarn dev` to get the full client.
+
+#### Against a remote server — client work without a local server
+
+Set `RC_SERVER_URL` to a Rocket.Chat server that already runs. Only Vite
+starts: no Meteor compilation and no Mongo. The script builds only the packages
+that the client reads from `dist`, so this is the fastest way to start on
+client work.
+
+> You log in with an account on the remote server, and every action changes
+> the data on that server. Do not point `RC_SERVER_URL` at a production
+> workspace.
+
+```bash
+cd apps/meteor
+RC_SERVER_URL=https://my-server.example.com yarn dev:next
+```
+
+Open `http://localhost:3000`. Vite serves the client from your working tree and
+sends the server routes (`/api`, `/websocket`, `/sockjs`, `/_oauth`, `/avatar`,
+`/file-upload` and others) to the remote server. Vite rewrites the cookies of
+the server to the local address, so the login and the file downloads work.
+
+The client runs your code, but the server runs its own version. A client change
+that needs a server change from your branch does not work in this mode — use
+the local server mode for it.
+
+#### Against a local Meteor server
+
+Without `RC_SERVER_URL`, the script runs the Meteor server too:
+
+```bash
+cd apps/meteor
+yarn dev:next
+```
+
+The script (`apps/meteor/vite/dev.mjs`) does three things:
+
+1. It builds the packages the app depends on (`turbo run build
+   --filter=@rocket.chat/meteor^...`). If the build fails, nothing starts.
+2. It starts Meteor on `METEOR_PORT` (default `3100`) without a client build.
+   `ROOT_URL` defaults to the Vite address, so the links that the server
+   builds (emails, OAuth callbacks) point to Vite.
+3. It starts Vite on `PORT` (default `3000`). Vite serves the client and sends
+   the server routes to Meteor.
+
+Open `http://localhost:3000` as usual. Ctrl+C stops Vite, Meteor and the
+bundled Mongo together.
+
+#### Package edits in both modes
+
+The Vite client compiles most workspace packages in `packages/` and
+`ee/packages/` from their source. An edit to one of these packages
+hot-reloads in the browser, with no `yarn dev` in the package. These rules
+apply:
+
+- The client reads a few packages from `dist`, because their build does more
+  than compile TypeScript. The list is in `apps/meteor/vite/workspacePackages.mjs`.
+  After you edit one of them, run `yarn build` in that package.
+- The local Meteor server still loads every package from `dist`. For a change
+  that the server uses, run `yarn dev` in the package as usual.
+- Set `RC_WORKSPACE_DIST=1` to make the client read every package from `dist`.
+
 ---
 
 ## 4. Environment variables
@@ -148,6 +219,8 @@ export MONGO_URL='mongodb://localhost:27017/rocketchat?replicaSet=rs0'
 | Command | What it does | When to use |
 |---------|-----------|-------------|
 | `yarn dev` (in `apps/meteor`) | Monolithic Meteor app | **default** — day-to-day development |
+| `RC_SERVER_URL=<url> yarn dev:next` (in `apps/meteor`) | Vite client against a remote server (work in progress) | client work without a local server |
+| `yarn dev:next` (in `apps/meteor`) | Meteor server + Vite client (work in progress) | client work against your own server code |
 | `yarn ms` | Microservices mode (transporter, default TCP) | working on services (presence, ddp-streamer, authorization…) |
 | `yarn storybook` | Component Storybook on port 6006 | developing UI in isolation |
 | `yarn build` | Full monorepo build (Turbo) | validate build / local CI |
