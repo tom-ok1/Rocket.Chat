@@ -37,31 +37,41 @@ production or to inspect data with an external client (see section 5).
 
 ---
 
-## 2. Clone and install
+## 2. Clone, install and build
 
 ```bash
 git clone https://github.com/RocketChat/Rocket.Chat.git
 cd Rocket.Chat
 ./scripts/check-deps.sh --install   # Node, Yarn and Meteor at the pinned versions
 yarn                                # installs all workspaces (slow the first time)
+yarn build                          # builds every workspace package
 ```
 
 This is a monorepo (Yarn workspaces + Turborepo). Running `yarn` at the root
 installs `apps/*`, `packages/*` and `ee/*` at once. Do not run `yarn` inside
 subfolders.
 
+The Meteor app loads the other workspace packages from their `dist` folders, so
+`yarn build` must finish before the first start. Run it again after a pull that
+changes packages.
+
 ---
 
 ## 3. Run the app
 
-From the **root** of the repository:
+> **Do not run `yarn dev` from the root.** It starts a `tsc --watch` for every
+> package the app depends on, which costs a lot of CPU, and it does not build
+> the packages that have no `dev` script — on a fresh clone the app fails to
+> start.
+
+Run `yarn dev` inside the workspace you work in. For the Meteor app:
 
 ```bash
+cd apps/meteor
 yarn dev
 ```
 
-This runs `turbo run dev`, which builds the required packages and starts the
-Meteor app in `apps/meteor`. Once you see the server listening, open:
+Once you see the server listening, open:
 
 ```text
 http://localhost:3000
@@ -75,47 +85,21 @@ Hot reload is active: editing files in `apps/meteor` recompiles and reloads.
 > The first Meteor compilation is slow (several minutes). Subsequent ones use
 > the cache and are much faster.
 
-### Lighter alternative: run Meteor alone
+### Work on a package
 
-The root `yarn dev` runs `turbo run dev --env-mode=loose --parallel --filter=@rocket.chat/meteor...`,
-which **builds and watches every workspace package** the app depends on. That's
-correct but heavy — lots of `tsc --watch` processes and CPU.
-
-If you are only touching `apps/meteor` and your packages are already built, run
-Meteor directly without the package watchers:
+`apps/meteor` does not watch `packages/*`. When you edit a package, run
+`yarn dev` (`tsc --watch`) in that package, in a separate terminal:
 
 ```bash
-# once, to build all dependency packages (or run root `yarn dev` once and Ctrl+C)
-yarn build
-
-# then run only the Meteor app — no package watching
-cd apps/meteor
+cd packages/rest-typings
 yarn dev
 ```
 
-Trade-off: changes inside `packages/*` won't recompile automatically. When you
-edit a package, rebuild just that one (see below) — Meteor picks up the new
-`dist` on its next reload.
+Meteor picks up the new `dist` on its next reload. For a one-shot rebuild, run
+`yarn build` in that package instead. Most packages expose both scripts.
 
-### Build or watch a single package
-
-Use Yarn workspaces to act on one package without touching the rest:
-
-```bash
-# build a single package once
-yarn workspace @rocket.chat/core-typings run build
-
-# OR watch just that package (tsc --watch) in a separate terminal
-yarn workspace @rocket.chat/rest-typings run dev
-```
-
-Pattern: `yarn workspace <package-name> run <script>`. The package name is the
-`"name"` field in that package's `package.json` (e.g. `@rocket.chat/models`,
-`@rocket.chat/ui-client`). Most packages expose `build` (one-shot) and `dev`
-(`tsc --watch`).
-
-Recommended light loop: `cd apps/meteor && yarn dev` in one terminal, and
-`yarn workspace <pkg> run dev` only for the package(s) you are editing.
+Recommended loop: `yarn dev` in `apps/meteor` in one terminal, and `yarn dev`
+only in the package(s) you are editing.
 
 ---
 
@@ -163,7 +147,7 @@ export MONGO_URL='mongodb://localhost:27017/rocketchat?replicaSet=rs0'
 
 | Command | What it does | When to use |
 |---------|-----------|-------------|
-| `yarn dev` | Monolithic Meteor app | **default** — day-to-day development |
+| `yarn dev` (in `apps/meteor`) | Monolithic Meteor app | **default** — day-to-day development |
 | `yarn ms` | Microservices mode (transporter, default TCP) | working on services (presence, ddp-streamer, authorization…) |
 | `yarn storybook` | Component Storybook on port 6006 | developing UI in isolation |
 | `yarn build` | Full monorepo build (Turbo) | validate build / local CI |
