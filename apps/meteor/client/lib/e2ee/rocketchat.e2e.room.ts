@@ -36,6 +36,8 @@ import { roomCoordinator } from '../rooms/roomCoordinator';
 const KEY_ID = Symbol('keyID');
 const PAUSED = Symbol('PAUSED');
 
+export type E2EEDecryptOptions = { throwOnError?: boolean };
+
 type Mutations = { [k in keyof typeof E2ERoomState]?: (keyof typeof E2ERoomState)[] };
 
 const permitedMutations: Mutations = {
@@ -670,30 +672,37 @@ export class E2ERoom extends Emitter {
 		return this.encryptText(data);
 	}
 
-	async decryptContent<T extends IUploadWithUser | IE2EEMessage>(data: T) {
+	async decryptContent<T extends IUploadWithUser | IE2EEMessage>(data: T, options: E2EEDecryptOptions = {}) {
 		if (data.content && data.content.algorithm === 'rc.v1.aes-sha2') {
-			const content = await this.decrypt(data.content.ciphertext);
+			const content = await this.decrypt(data.content.ciphertext, options);
 			Object.assign(data, content);
+		} else if (options.throwOnError) {
+			throw new Error('Unsupported encrypted content');
 		}
 
 		return data;
 	}
 
 	// Decrypt messages
-	async decryptMessage(message: IMessage | IE2EEMessage): Promise<IE2EEMessage | IMessage> {
-		if (message.t !== 'e2e' || message.e2e === 'done') {
+	async decryptMessage(message: IMessage | IE2EEMessage, options: E2EEDecryptOptions = {}): Promise<IE2EEMessage | IMessage> {
+		if (message.t !== 'e2e' || (message.e2e === 'done' && !options.throwOnError)) {
 			return message;
+		}
+		if (options.throwOnError) {
+			// Re-read ciphertext even if a UI listener has already substituted display text.
+			message = { ...message, ...(message.content ? { msg: '' } : {}) };
+			if (!message.content && !message.msg) throw new Error('Missing encrypted message content');
 		}
 
 		if (message.msg) {
-			const data = await this.decrypt(message.msg);
+			const data = await this.decrypt(message.msg, options);
 
 			if (data?.text) {
 				message.msg = data.text;
 			}
 		}
 
-		message = await this.decryptContent(message);
+		if (message.content) message = await this.decryptContent(message, options);
 
 		return {
 			...message,
@@ -706,7 +715,7 @@ export class E2ERoom extends Emitter {
 		return EJSON.parse(new TextDecoder('UTF-8').decode(new Uint8Array(result)));
 	}
 
-	async decrypt(message: string) {
+	async decrypt(message: string, options: E2EEDecryptOptions = {}) {
 		const keyID = message.slice(0, 12);
 		message = message.slice(12);
 
@@ -727,6 +736,7 @@ export class E2ERoom extends Emitter {
 					}
 					return await this.doDecrypt(vector, this.groupSessionKey, cipherText);
 				} catch (error) {
+					if (options.throwOnError) throw error;
 					this.error('Error decrypting message: ', error, message);
 					return { msg: t('E2E_indecipherable') };
 				}
@@ -743,6 +753,7 @@ export class E2ERoom extends Emitter {
 			}
 			return await this.doDecrypt(vector, this.groupSessionKey, cipherText);
 		} catch (error) {
+			if (options.throwOnError) throw error;
 			this.error('Error decrypting message: ', error, message);
 			return { msg: t('E2E_Key_Error') };
 		}

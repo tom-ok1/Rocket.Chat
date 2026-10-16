@@ -115,3 +115,9 @@ We're hiring developers, support people, and product managers all the time. Chec
 # 🗒️ Credits
 
 - Emoji provided graciously by [JoyPixels](https://www.joypixels.com).
+
+## Akatsuki browser collector (fork)
+
+See [akatsuki/README.md](akatsuki/README.md) for building this fork as a local
+browser client that connects to an existing Rocket.Chat server and forwards
+reports to Akatsuki with durable cursors and delivery recovery.

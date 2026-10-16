@@ -59,3 +59,7 @@ registration.yaml
 
 storybook-static
 development/tempo-data/
+
+# Local standalone collector build output and configuration
+akatsuki/.build/
+akatsuki/.env

@@ -1,0 +1,40 @@
+name: arc-rocketchat-client-test
+services:
+  mongo:
+    image: mongo:7.0.16
+    command: mongod --replSet rs0 --bind_ip_all --oplogSize 128
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: [CMD-SHELL, "mongosh --quiet --eval 'try { rs.status().ok } catch (e) { rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo:27017\"}]}).ok }' | grep 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+  rocketchat:
+    image: registry.rocket.chat/rocketchat/rocket.chat:7.10.0
+    platform: linux/amd64
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:3100:3000
+    environment:
+      ROOT_URL: http://localhost:3100
+      PORT: "3000"
+      MONGO_URL: mongodb://mongo:27017/rocketchat?replicaSet=rs0
+      MONGO_OPLOG_URL: mongodb://mongo:27017/local?replicaSet=rs0
+      DEPLOY_METHOD: docker
+      ADMIN_USERNAME: collector-test-admin
+      ADMIN_NAME: Collector Test Admin
+      ADMIN_EMAIL: collector-test@example.invalid
+      ADMIN_PASS: ${ROCKET_CHAT_TEST_ADMIN_PASSWORD:?Set a local test administrator password}
+      OVERWRITE_SETTING_Show_Setup_Wizard: completed
+      OVERWRITE_SETTING_Statistics_reporting: "false"
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/info').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      start_period: 60s
+      retries: 30
+volumes:
+  mongo-data:

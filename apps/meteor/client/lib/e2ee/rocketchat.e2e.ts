@@ -27,6 +27,7 @@ import {
 } from './helper';
 import { log, logError } from './logger';
 import { E2ERoom } from './rocketchat.e2e.room';
+import type { E2EEDecryptOptions } from './rocketchat.e2e.room';
 import { settings } from '../../../app/settings/client';
 import { limitQuoteChain } from '../../../app/ui-message/client/messageBox/limitQuoteChain';
 import { getUserAvatarURL } from '../../../app/utils/client';
@@ -677,18 +678,21 @@ class E2E extends Emitter {
 		return e2eRoom.decryptContent(file);
 	}
 
-	async decryptMessage(message: IMessage | IE2EEMessage): Promise<IMessage> {
-		if (!isE2EEMessage(message) || message.e2e === 'done') {
+	async decryptMessage(message: IMessage | IE2EEMessage, options: E2EEDecryptOptions = {}): Promise<IMessage> {
+		if (!isE2EEMessage(message) || (message.e2e === 'done' && !options.throwOnError)) {
 			return message;
 		}
+		if (options.throwOnError && !this.isReady()) throw new Error('E2EE account keys are not ready');
 
 		const e2eRoom = await this.getInstanceByRoomId(message.rid);
 
 		if (!e2eRoom) {
+			if (options.throwOnError) throw new Error('Encrypted room is unavailable');
 			return message;
 		}
+		if (options.throwOnError && !e2eRoom.isReady()) throw new Error('E2EE room keys are not ready');
 
-		const decryptedMessage = (await e2eRoom.decryptMessage(message)) as IE2EEMessage;
+		const decryptedMessage = (await e2eRoom.decryptMessage(message, options)) as IE2EEMessage;
 
 		const decryptedMessageWithQuote = await this.parseQuoteAttachment(decryptedMessage);
 

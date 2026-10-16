@@ -1,0 +1,25 @@
+{
+	"name": "akatsuki-rocketchat-client-tools",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "vitest run --config vitest.config.ts",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"code-fix": "prettier --write ../apps/meteor/client/akatsuki tests *.ts *.mjs *.json && npm run typecheck",
+		"start": "node serve.mjs",
+		"build": "node build.mjs",
+		"test-server": "docker compose -f compose.test-server.yml up -d",
+		"test-server:stop": "docker compose -f compose.test-server.yml stop",
+		"test:browser": "node browser-smoke.mjs"
+	},
+	"devDependencies": {
+		"@types/node": "26.6.4",
+		"fake-indexeddb": "6.2.5",
+		"prettier": "3.2.5",
+		"typescript": "7.0.2",
+		"vitest": "5.0.3"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}
