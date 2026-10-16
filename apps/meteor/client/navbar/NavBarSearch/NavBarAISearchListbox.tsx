@@ -13,7 +13,6 @@ import NavBarSearchIntelligentSection from './NavBarSearchIntelligentSection';
 import NavBarSearchRoomSection from './NavBarSearchRoomSection';
 import { useAISearchItems } from './hooks/useAISearchItems';
 import { useAISearchRooms } from './hooks/useAISearchRooms';
-import { useListboxNavigation } from './hooks/useSearchNavigation';
 import ResultsLiveRegion from '../../components/ResultsLiveRegion';
 
 export type NavBarAISearchListBoxProps = {
@@ -27,7 +26,6 @@ const NavBarAISearchListBox = ({ state, overlayProps, aiSearchActive, aiSearchAv
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLElement>(null);
 
-	const handleKeyDown = useListboxNavigation(state);
 	useOutsideClick([containerRef], state.close);
 
 	const { resetField, setValue, watch } = useFormContext<NavBarSearchFormValues>();
@@ -61,7 +59,14 @@ const NavBarAISearchListBox = ({ state, overlayProps, aiSearchActive, aiSearchAv
 		>
 			<ResultsLiveRegion shouldAnnounce={!isSearchLoading} itemCount={itemCount} isLoading={isSearchLoading} />
 			<CustomScrollbars>
-				<div {...overlayProps} role='listbox' aria-label={listboxLabel} aria-busy={isSearchLoading} tabIndex={-1} onKeyDown={handleKeyDown}>
+				<div
+					{...overlayProps}
+					role='listbox'
+					aria-label={listboxLabel}
+					aria-busy={isSearchLoading}
+					tabIndex={-1}
+					onMouseDown={(event) => event.preventDefault()}
+				>
 					<NavBarSearchIntelligentSection items={aiItems.intelligent} onSelect={handleSelect} onClose={state.close} />
 					<NavBarSearchFilterSuggestions suggestions={aiItems.filterSuggestions} />
 					<NavBarSearchRoomSection
