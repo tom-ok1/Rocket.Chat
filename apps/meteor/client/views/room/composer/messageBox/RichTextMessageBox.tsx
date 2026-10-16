@@ -526,6 +526,8 @@ const RichTextMessageBox = ({
 					onMouseLeave={handleMouseLeave}
 					linkmodifier={linkModifier}
 					aria-activedescendant={popup.focused ? `popup-item-${popup.focused._id}` : undefined}
+					aria-autocomplete='list'
+					aria-controls={shouldPopupPreview && popup.option ? popup.listboxId : undefined}
 					onBlur={setLastCursorPosition}
 					onFocus={getLastCursorPosition}
 				/>

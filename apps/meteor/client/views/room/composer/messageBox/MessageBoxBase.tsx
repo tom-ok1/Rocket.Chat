@@ -96,8 +96,11 @@ const MessageBoxBase = ({
 			{shouldPopupPreview && popup.option && (
 				<ComposerBoxPopup
 					select={popup.select}
+					hover={popup.hover}
 					items={popup.items}
 					focused={popup.focused}
+					focusVisible={popup.focusVisible}
+					listboxId={popup.listboxId}
 					title={popup.option.title}
 					renderItem={popup.option.renderItem}
 				/>

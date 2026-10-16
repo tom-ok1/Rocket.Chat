@@ -420,6 +420,8 @@ const MessageBox = ({
 					placeholder={composerPlaceholder}
 					onPaste={handlePaste}
 					aria-activedescendant={popup.focused ? `popup-item-${popup.focused._id}` : undefined}
+					aria-autocomplete='list'
+					aria-controls={shouldPopupPreview && popup.option ? popup.listboxId : undefined}
 				/>
 			}
 			files={<MessageComposerFiles />}
